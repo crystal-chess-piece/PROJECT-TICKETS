@@ -1,0 +1,34 @@
+name: Ticketflow prototype checks
+
+on:
+  push:
+    branches:
+      - feat/ticketflow-mvp
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Validate embedded JavaScript syntax
+        run: |
+          node -e "const fs=require('fs'); const html=fs.readFileSync('index.html','utf8'); const scripts=[...html.matchAll(/<script>([\\s\\S]*?)<\\/script>/g)]; if (!scripts.length) throw new Error('No inline app script found'); fs.writeFileSync('/tmp/ticketflow-app.js',scripts.map(x=>x[1]).join('\\n'));"
+          node --check /tmp/ticketflow-app.js
+      - name: Check required UI hooks
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const html = fs.readFileSync('index.html', 'utf8');
+          for (const marker of ['id="ticket-rows"', 'id="ticket-form"', 'id="detail-status"', 'id="search"', 'id="priority-list"']) {
+            if (!html.includes(marker)) throw new Error('Missing UI hook: ' + marker);
+          }
+          console.log('Required Ticketflow UI hooks are present.');
+          NODE
